@@ -34,3 +34,5 @@ captures/
 \.idea/
 
 Inapp\.iml
+
+app/app\.iml
