@@ -1,6 +1,6 @@
 package inapp.com.inapppurchases;
 
-public interface InAppConstants {
+interface InAppConstants {
     int API_VERSION = 3;
     String ITEM_ID_LIST = "ITEM_ID_LIST";
     String ITEM_TYPE = "inapp";
