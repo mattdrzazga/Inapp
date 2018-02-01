@@ -5,6 +5,7 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import inapp.com.inapppurchases.InApp;
 import inapp.com.inapppurchases.InAppController;
 import java.util.List;
@@ -48,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
 
         controller = new InAppController(this, inAppCallback);
         controller.onCreate();
+
+        findViewById(R.id.buyButton).setOnClickListener(v -> purchaseInapp());
     }
 
     @Override
@@ -65,5 +68,9 @@ public class MainActivity extends AppCompatActivity {
     private void updatePurchaseInfo() {
         controller.queryPurchases();
         controller.querySkuDetails(TEST_SKU);
+    }
+
+    private void purchaseInapp() {
+        controller.purchaseSku(TEST_SKU);
     }
 }
