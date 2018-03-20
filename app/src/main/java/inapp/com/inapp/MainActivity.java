@@ -16,11 +16,9 @@ public class MainActivity extends AppCompatActivity {
 
     private InAppController controller;
 
-    private InAppController.InAppCallback inAppCallback = new InAppController.InAppCallback() {
-        @Override public void onServiceConnected() {
-            updatePurchaseInfo();
-        }
+    private InAppController.ConnectionCallback connectionCallback = this::updatePurchaseInfo;
 
+    private InAppController.InAppCallback inAppCallback = new InAppController.InAppCallback() {
         @Override public void purchasedSkus(@NonNull List<String> purchasedItems) {
             for (String sku : purchasedItems) {
                 Log.d(TAG, "purchasedSkus: " + sku);
@@ -37,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "onPurchaseSuccess: " + sku);
         }
 
-        @Override public void onPurchaseFail(@NonNull String sku) {
+        @Override public void onPurchaseFail(@NonNull String sku, int code) {
 
         }
     };
@@ -47,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        controller = new InAppController(this, inAppCallback);
+        controller = new InAppController(this, connectionCallback, inAppCallback);
         controller.onCreate();
 
         findViewById(R.id.buyButton).setOnClickListener(v -> purchaseInapp());

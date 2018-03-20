@@ -10,6 +10,7 @@ import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -17,6 +18,8 @@ import com.android.vending.billing.IInAppBillingService;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,9 +38,18 @@ public class InAppController {
     public static final int RESPONSE_ITEM_ALREADY_OWNED = 7;
     public static final int RESPONSE_ITEM_NOT_OWNED = 8;
 
+    @IntDef({
+            RESPONSE_OK, RESPONSE_USER_CANCELED, RESPONSE_BILLING_UNAVAILABLE,
+            RESPONSE_ITEM_UNAVAILABLE, RESPONSE_DEVELOPER_ERROR, RESPONSE_ERROR,
+            RESPONSE_ITEM_ALREADY_OWNED, RESPONSE_ITEM_NOT_OWNED
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ResponseCode {}
+
     private static final String TAG = "InAppController";
     private final String mPackageName;
     private AppCompatActivity mContext;
+    private ConnectionCallback connectionCallback;
     private InAppCallback mCallback;
 
     private IInAppBillingService mService;
@@ -47,19 +59,20 @@ public class InAppController {
         public void onServiceConnected(ComponentName name, IBinder service) {
             mService = IInAppBillingService.Stub.asInterface(service);
             Log.d(TAG, "onServiceConnected: ");
-            mCallback.onServiceConnected();
+            connectionCallback.onServiceConnected();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             mService = null;
             Log.d(TAG, "onServiceDisconnected: ");
-            mCallback.onServiceDisconnected();
+            connectionCallback.onServiceDisconnected();
         }
     };
 
-    public InAppController(@NonNull AppCompatActivity context, @NonNull InAppCallback inAppCallback) {
+    public InAppController(@NonNull AppCompatActivity context, @NonNull ConnectionCallback connectionCallback, @NonNull InAppCallback inAppCallback) {
         mContext = requireNonNull(context);
+        this.connectionCallback = requireNonNull(connectionCallback);
         mCallback = requireNonNull(inAppCallback);
         mPackageName = context.getPackageName();
     }
@@ -94,7 +107,7 @@ public class InAppController {
                     mCallback.onPurchaseSuccess(sku);
                 }
                 else {
-                    mCallback.onPurchaseFail(sku);
+                    mCallback.onPurchaseFail(sku, responseCode);
                 }
             }
         }
@@ -104,7 +117,7 @@ public class InAppController {
         new Thread(() -> {
             try {
                 final Bundle
-                        buyIntentBundle = mService.getBuyIntent(3, mPackageName, sku, InAppConstants.ITEM_TYPE, "");
+                        buyIntentBundle = mService.getBuyIntent(3, mPackageName, sku, InAppConstants.ITEM_TYPE_INAPP, "");
                 final PendingIntent pendingIntent = buyIntentBundle.getParcelable(InAppConstants.BUY_INTENT);
                 if (pendingIntent != null) {
                     int flagsMask = 0;
@@ -120,7 +133,7 @@ public class InAppController {
 
     public void queryPurchases() {
         try {
-            final Bundle purchasedSkus = mService.getPurchases(InAppConstants.API_VERSION, mPackageName, InAppConstants.ITEM_TYPE, null);
+            final Bundle purchasedSkus = mService.getPurchases(InAppConstants.API_VERSION, mPackageName, InAppConstants.ITEM_TYPE_INAPP, null);
             final int responseCode = purchasedSkus.getInt(InAppConstants.RESPONSE_CODE);
 
             if (responseCode == RESPONSE_OK) {
@@ -143,7 +156,7 @@ public class InAppController {
         querySkusBundle.putStringArrayList(InAppConstants.ITEM_ID_LIST, list);
 
         try {
-            final Bundle skuDetails = mService.getSkuDetails(InAppConstants.API_VERSION, mPackageName, InAppConstants.ITEM_TYPE, querySkusBundle);
+            final Bundle skuDetails = mService.getSkuDetails(InAppConstants.API_VERSION, mPackageName, InAppConstants.ITEM_TYPE_INAPP, querySkusBundle);
             final int responseCode = skuDetails.getInt(InAppConstants.RESPONSE_CODE);
 
             if (responseCode == RESPONSE_OK) {
@@ -165,14 +178,16 @@ public class InAppController {
         }
     }
 
-    public interface InAppCallback {
+    public interface ConnectionCallback {
         void onServiceConnected();
         default void onServiceDisconnected() {}
+    }
 
+    public interface InAppCallback {
         void purchasedSkus(@NonNull List<String> purchasedItems);
         void skuDetails(@NonNull List<InApp> details);
         void onPurchaseSuccess(@NonNull String sku);
-        void onPurchaseFail(@NonNull String sku);
+        void onPurchaseFail(@NonNull String sku, @ResponseCode int code);
     }
 }
 

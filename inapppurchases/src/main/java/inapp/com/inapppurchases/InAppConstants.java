@@ -3,7 +3,8 @@ package inapp.com.inapppurchases;
 interface InAppConstants {
     int API_VERSION = 3;
     String ITEM_ID_LIST = "ITEM_ID_LIST";
-    String ITEM_TYPE = "inapp";
+    String ITEM_TYPE_INAPP = "inapp";
+    String ITEM_TYPE_SUBS = "subs";
     String RESPONSE_CODE = "RESPONSE_CODE";
     String DETAILS_LIST = "DETAILS_LIST";
     String BUY_INTENT = "BUY_INTENT";
