@@ -47,52 +47,52 @@ public class InAppController {
     public @interface ResponseCode {}
 
     private static final String TAG = "InAppController";
-    private final String mPackageName;
-    private AppCompatActivity mContext;
+    private final String packageName;
+    private AppCompatActivity context;
     private ConnectionCallback connectionCallback;
-    private InAppCallback mCallback;
+    private InAppCallback inAppCallback;
 
-    private IInAppBillingService mService;
-    @NonNull private final ServiceConnection mServiceConnection = new ServiceConnection() {
+    private IInAppBillingService service;
+    @NonNull private final ServiceConnection serviceConnection = new ServiceConnection() {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            mService = IInAppBillingService.Stub.asInterface(service);
+            InAppController.this.service = IInAppBillingService.Stub.asInterface(service);
             Log.d(TAG, "onServiceConnected: ");
             connectionCallback.onServiceConnected();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            mService = null;
+            service = null;
             Log.d(TAG, "onServiceDisconnected: ");
             connectionCallback.onServiceDisconnected();
         }
     };
 
     public InAppController(@NonNull AppCompatActivity context, @NonNull ConnectionCallback connectionCallback, @NonNull InAppCallback inAppCallback) {
-        mContext = requireNonNull(context);
+        this.context = requireNonNull(context);
         this.connectionCallback = requireNonNull(connectionCallback);
-        mCallback = requireNonNull(inAppCallback);
-        mPackageName = context.getPackageName();
+        this.inAppCallback = requireNonNull(inAppCallback);
+        packageName = context.getPackageName();
     }
 
     public void connect() {
-        bindService(mContext, mServiceConnection);
+        bindService(context, serviceConnection);
     }
 
-    private void bindService(@NonNull Context context, @NonNull ServiceConnection connection) {
-        Intent serviceIntent = new Intent("com.android.vending.billing.InAppBillingService.BIND");
+    public static void bindService(@NonNull Context context, @NonNull ServiceConnection connection) {
+        final Intent serviceIntent = new Intent("com.android.vending.billing.InAppBillingService.BIND");
         serviceIntent.setPackage("com.android.vending");
-        context.bindService(serviceIntent, requireNonNull(connection), Context.BIND_AUTO_CREATE);
+        requireNonNull(context).bindService(serviceIntent, requireNonNull(connection), Context.BIND_AUTO_CREATE);
     }
 
     public void release() {
-        if (mService != null) {
-            mContext.unbindService(mServiceConnection);
+        if (service != null) {
+            context.unbindService(serviceConnection);
         }
-        mContext = null;
-        mCallback = null;
+        context = null;
+        inAppCallback = null;
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -104,10 +104,10 @@ public class InAppController {
                 final JsonObject object = new JsonParser().parse(purchaseData).getAsJsonObject();
                 final String sku = object.get(InAppConstants.PRODUCT_ID).getAsString();
                 if (responseCode == RESPONSE_OK) {
-                    mCallback.onPurchaseSuccess(sku);
+                    inAppCallback.onPurchaseSuccess(sku);
                 }
                 else {
-                    mCallback.onPurchaseFail(sku, responseCode);
+                    inAppCallback.onPurchaseFail(sku, responseCode);
                 }
             }
         }
@@ -117,13 +117,13 @@ public class InAppController {
         new Thread(() -> {
             try {
                 final Bundle
-                        buyIntentBundle = mService.getBuyIntent(3, mPackageName, sku, InAppConstants.ITEM_TYPE_INAPP, "");
+                        buyIntentBundle = service.getBuyIntent(3, packageName, sku, InAppConstants.ITEM_TYPE_INAPP, "");
                 final PendingIntent pendingIntent = buyIntentBundle.getParcelable(InAppConstants.BUY_INTENT);
                 if (pendingIntent != null) {
                     int flagsMask = 0;
                     int flagsValues = 0;
                     int extraFlags = 0;
-                    mContext.startIntentSenderForResult(pendingIntent.getIntentSender(), REQUEST_PURCHASE_SKU, new Intent(), flagsMask, flagsValues, extraFlags);
+                    context.startIntentSenderForResult(pendingIntent.getIntentSender(), REQUEST_PURCHASE_SKU, new Intent(), flagsMask, flagsValues, extraFlags);
                 }
             } catch (RemoteException | IntentSender.SendIntentException e) {
                 e.printStackTrace();
@@ -133,14 +133,15 @@ public class InAppController {
 
     public void queryPurchases() {
         try {
-            final Bundle purchasedSkus = mService.getPurchases(InAppConstants.API_VERSION, mPackageName, InAppConstants.ITEM_TYPE_INAPP, null);
+            final Bundle purchasedSkus = service.getPurchases(InAppConstants.API_VERSION,
+                    packageName, InAppConstants.ITEM_TYPE_INAPP, null);
             final int responseCode = purchasedSkus.getInt(InAppConstants.RESPONSE_CODE);
 
             if (responseCode == RESPONSE_OK) {
                 final ArrayList<String> purchasedItemIds = purchasedSkus.getStringArrayList(InAppConstants.INAPP_PURCHASE_ITEM_LIST);
                 // Will never be null if RESPONSE_OK, but check for lint's sanity
                 if (purchasedItemIds != null) {
-                    mCallback.purchasedSkus(purchasedItemIds);
+                    inAppCallback.purchasedSkus(purchasedItemIds);
                 }
             }
 
@@ -156,7 +157,8 @@ public class InAppController {
         querySkusBundle.putStringArrayList(InAppConstants.ITEM_ID_LIST, list);
 
         try {
-            final Bundle skuDetails = mService.getSkuDetails(InAppConstants.API_VERSION, mPackageName, InAppConstants.ITEM_TYPE_INAPP, querySkusBundle);
+            final Bundle skuDetails = service.getSkuDetails(InAppConstants.API_VERSION,
+                    packageName, InAppConstants.ITEM_TYPE_INAPP, querySkusBundle);
             final int responseCode = skuDetails.getInt(InAppConstants.RESPONSE_CODE);
 
             if (responseCode == RESPONSE_OK) {
@@ -169,7 +171,7 @@ public class InAppController {
                         final JsonObject jsonObject = new JsonParser().parse(response).getAsJsonObject();
                         inApps.add(gson.fromJson(jsonObject, InApp.class));
                     }
-                    mCallback.skuDetails(inApps);
+                    inAppCallback.skuDetails(inApps);
                 }
             }
 
