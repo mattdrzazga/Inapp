@@ -138,11 +138,8 @@ public class InAppController {
             final int responseCode = purchasedSkus.getInt(InAppConstants.RESPONSE_CODE);
 
             if (responseCode == RESPONSE_OK) {
-                final ArrayList<String> purchasedItemIds = purchasedSkus.getStringArrayList(InAppConstants.INAPP_PURCHASE_ITEM_LIST);
-                // Will never be null if RESPONSE_OK, but check for lint's sanity
-                if (purchasedItemIds != null) {
-                    inAppCallback.purchasedSkus(purchasedItemIds);
-                }
+                final List<String> purchasedItemIds = unpackList(purchasedSkus, InAppConstants.INAPP_PURCHASE_ITEM_LIST);
+                inAppCallback.purchasedSkus(purchasedItemIds);
             }
 
         } catch (RemoteException e) {
@@ -163,20 +160,28 @@ public class InAppController {
 
             if (responseCode == RESPONSE_OK) {
                 final Gson gson = new Gson();
-                final ArrayList<InApp> inApps = new ArrayList<>();
-                final ArrayList<String> responseList = skuDetails.getStringArrayList(InAppConstants.DETAILS_LIST);
-                // Will never be null if RESPONSE_OK, but check for lint's sanity
-                if (responseList != null) {
-                    for (String response : responseList) {
-                        final JsonObject jsonObject = new JsonParser().parse(response).getAsJsonObject();
-                        inApps.add(gson.fromJson(jsonObject, InApp.class));
-                    }
-                    inAppCallback.skuDetails(inApps);
+                final List<InApp> inApps = new ArrayList<>();
+                final List<String> responseList = unpackList(skuDetails, InAppConstants.DETAILS_LIST);
+                final JsonParser jsonParser = new JsonParser();
+                for (String response : responseList) {
+                    final JsonObject jsonObject = jsonParser.parse(response).getAsJsonObject();
+                    inApps.add(gson.fromJson(jsonObject, InApp.class));
                 }
+                inAppCallback.skuDetails(inApps);
             }
 
         } catch (RemoteException e) {
             e.printStackTrace();
+        }
+    }
+
+    private static @NonNull List<String> unpackList(@NonNull Bundle bundle, String key) {
+        final List<String> list = requireNonNull(bundle).getStringArrayList(key);
+        if (list != null) {
+            return list;
+        }
+        else {
+            return new ArrayList<>();
         }
     }
 
