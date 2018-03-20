@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         controller = new InAppController(this, connectionCallback, inAppCallback);
-        controller.onCreate();
+        controller.connect();
 
         findViewById(R.id.buyButton).setOnClickListener(v -> purchaseInapp());
     }
@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        controller.onDestroy();
+        controller.release();
     }
 
     @Override

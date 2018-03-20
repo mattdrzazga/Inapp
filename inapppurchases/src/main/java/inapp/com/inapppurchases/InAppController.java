@@ -77,17 +77,17 @@ public class InAppController {
         mPackageName = context.getPackageName();
     }
 
-    public void onCreate() {
+    public void connect() {
         bindService(mContext, mServiceConnection);
     }
 
-    public static void bindService(@NonNull Context context, @NonNull ServiceConnection connection) {
+    private void bindService(@NonNull Context context, @NonNull ServiceConnection connection) {
         Intent serviceIntent = new Intent("com.android.vending.billing.InAppBillingService.BIND");
         serviceIntent.setPackage("com.android.vending");
-        requireNonNull(context).bindService(serviceIntent, requireNonNull(connection), Context.BIND_AUTO_CREATE);
+        context.bindService(serviceIntent, requireNonNull(connection), Context.BIND_AUTO_CREATE);
     }
 
-    public void onDestroy() {
+    public void release() {
         if (mService != null) {
             mContext.unbindService(mServiceConnection);
         }
